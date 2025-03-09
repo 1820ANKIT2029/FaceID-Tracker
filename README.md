@@ -1,5 +1,6 @@
 # FaceID-Tracker
 
+```bash
 project-root/
 │
 ├── frontend/                   # React or Next.js frontend
@@ -50,3 +51,4 @@ project-root/
 ├── .gitignore
 ├── README.md
 └── package.json / pyproject.toml
+```
