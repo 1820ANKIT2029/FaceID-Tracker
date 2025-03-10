@@ -1,36 +1,82 @@
-import { useEffect, useRef } from "react";
+import {useRef,useEffect} from 'react'
+import '../App.css'
+import * as faceapi from 'face-api.js'
 
-const FaceCapturePage = () => {
-  const videoRef = useRef(null);
+function App(){
+  const videoRef = useRef()
+  const canvasRef = useRef()
 
-  useEffect(() => {
-    const startCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      } catch (error) {
-        console.error("Error accessing camera:", error);
-      }
-    };
-    startCamera();
-  }, []);
+  // LOAD FROM USEEFFECT
+  useEffect(()=>{
+    startVideo()
+    videoRef && loadModels()
+
+  },[])
+
+
+
+  // OPEN YOU FACE WEBCAM
+  const startVideo = ()=>{
+    navigator.mediaDevices.getUserMedia({video:true})
+    .then((currentStream)=>{
+      videoRef.current.srcObject = currentStream
+    })
+    .catch((err)=>{
+      console.log(err)
+    })
+  }
+  // LOAD MODELS FROM FACE API
+
+  const loadModels = ()=>{
+    Promise.all([
+      // THIS FOR FACE DETECT AND LOAD FROM YOU PUBLIC/MODELS DIRECTORY
+      faceapi.nets.tinyFaceDetector.loadFromUri("/models"),
+      // faceapi.nets.faceLandmark68Net.loadFromUri("/models"),
+      // faceapi.nets.faceRecognitionNet.loadFromUri("/models"),
+      // faceapi.nets.faceExpressionNet.loadFromUri("/models")
+
+      ]).then(()=>{
+      faceMyDetect()
+    })
+  }
+
+  const faceMyDetect = ()=>{
+    setInterval(async()=>{
+      const detections = await faceapi.detectAllFaces(videoRef.current,
+        new faceapi.TinyFaceDetectorOptions())
+
+      // DRAW YOU FACE IN WEBCAM
+      canvasRef.current.innerHtml = faceapi.createCanvasFromMedia(videoRef.current)
+      faceapi.matchDimensions(canvasRef.current,{
+        width:940,
+        height:650
+      })
+
+      const resized = faceapi.resizeResults(detections,{
+         width:940,
+        height:650
+      })
+
+      faceapi.draw.drawDetections(canvasRef.current,resized)
+      // faceapi.draw.drawFaceLandmarks(canvasRef.current,resized)
+      // faceapi.draw.drawFaceExpressions(canvasRef.current,resized)
+
+
+    },1000)
+  }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 p-10">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold mb-4">Face Capture</h2>
-        <video
-          ref={videoRef}
-          autoPlay
-          className="border rounded-lg shadow-md w-[800px] h-[600px]"
-        />
+    <div className="myapp">
+    <h1>Face Detection</h1>
+      <div className="appvide">
+        
+      <video crossOrigin="anonymous" ref={videoRef} autoPlay></video>
       </div>
+      <canvas ref={canvasRef} width="940" height="650"
+      className="appcanvas"/>
     </div>
-  );
-};
+    )
 
-export default FaceCapturePage;
+}
+
+export default App;
