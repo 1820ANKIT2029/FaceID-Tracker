@@ -20,7 +20,7 @@ project-root/
 │   │   └── main.jsx            # Vite/React entry
 │   └── vite.config.js / next.config.js
 │
-├── backend/                   # Node.js, Express, Python Flask/Django etc.
+├── backend/                   # Node.js, Express, Python  (FastApi)
 │   ├── api/                    # Routes / Controllers
 │   ├── models/                 # Mongoose/SQL/ML models
 │   ├── services/               # Business logic (e.g., face recognition)
