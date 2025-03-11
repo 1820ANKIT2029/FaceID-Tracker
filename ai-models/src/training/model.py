@@ -1,15 +1,15 @@
 import tensorflow as tf
 from tensorflow.keras import Model
-from tensorflow.keras.layers import Layer, Conv2D, MaxPooling2D, Flatten, Dense, InputLayer
+from tensorflow.keras.layers import Layer, Conv2D, MaxPooling2D, Flatten, Dense
+from tensorflow.keras.saving import register_keras_serializable
 
-config = {
-    "IM_SIZE": 100,
-}
+from ..config import config
 
+IM_SIZE = config["IM_SIZE"]
 
 class EmbeddingModel(Model):
-    def __init__(self):
-        super(EmbeddingModel, self).__init__(name='embedding')
+    def __init__(self, **kwargs):
+        super(EmbeddingModel, self).__init__(name='embedding', **kwargs)
 
         # First block
         self.conv1 = Conv2D(64, (10, 10), activation='relu')
@@ -53,10 +53,10 @@ class L1Dist(Layer):
     def call(self, anchor_embedding, validation_embedding):
         return tf.math.abs(anchor_embedding - validation_embedding)
 
-
+@register_keras_serializable()
 class SiameseModel(Model):
-    def __init__(self):
-        super(SiameseModel, self).__init__(name='SiameseNetwork')
+    def __init__(self, **kwargs):
+        super(SiameseModel, self).__init__(**kwargs)
 
         self.embedding = EmbeddingModel()
 
@@ -65,8 +65,10 @@ class SiameseModel(Model):
         self.classifier = Dense(1, activation='sigmoid')
 
     def call(self, inputs):
-        input_image, validation_image = inputs
+        input_image, validation_image = inputs[0], inputs[1]
 
+        # input_a = Input(shape=(IM_SIZE, IM_SIZE, 3))
+        # input_b = Input(shape=(IM_SIZE, IM_SIZE, 3))
         # Get embeddings
         input_embedding = self.embedding(input_image)
         validation_embedding = self.embedding(validation_image)
@@ -79,12 +81,29 @@ class SiameseModel(Model):
 
         return output
 
+    # def prediction(self, input_img, val_img_arr):
+    #     person = self.embedding(input_img)
 
-def main():
-    model = SiameseModel()
-    dummy_input = tf.random.normal((1, config["IM_SIZE"], config["IM_SIZE"], 3))
-    model((dummy_input, dummy_input))  # triggers model build
-    model.summary()
+    #     name = None
+    #     max_ = -1
+    #     """
+    #     val_img_arr = (
+    #         ("Ankit kumar", [33, 4, 4, 534 ...]),
+    #         ("Anup kumar", [33, 4, 4, 534 ...]),
+    #         ("Ankit kumar", [33, 4, 4, 534 ...]),
+    #     )
+    #     """
+    #     for key, img_vec in val_img_arr:
+    #         t = some(img_vec)
 
-if __name__ == "__main__":
-    main()
+    #         dist = self.l1_distance(person, t)
+
+    #         output = self.classifier(dist)
+
+    #         if output > max_:
+    #             max_ = output
+    #             name = key
+
+    #     return (name, max_)
+
+custom_objects = {'SiameseModel': SiameseModel, 'EmbeddingModel': EmbeddingModel, 'L1Dist': L1Dist}
