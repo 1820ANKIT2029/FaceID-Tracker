@@ -1,20 +1,63 @@
-@import "tailwindcss";
-
-.appvide{
-display: flex;
-align-items: center;
-}
-
-.appcanvas{
-position: absolute;
-top: 220px
-}
-
-.myapp{
-display: flex;
-width: 100vw;
-height: 100vh;
-flex-direction: column;
-align-items: center;
-justify-content: space-between;
-}
+/* Overall container styling */
+.app-container {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  /* Video container styling */
+  .video-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  /* Overlay canvas styling with a lower z-index to keep the button clickable */
+  canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+  }
+  
+  /* "Click" button styling with a higher z-index */
+  .capture-button {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 16px;
+    font-size: 16px;
+    cursor: pointer;
+    z-index: 2;
+  }
+  
+  /* Captured images container styling */
+  .captured-images-container {
+    margin-top: 20px;
+    width: 90%;
+    max-width: 720px;
+  }
+  
+  .captured-images-container h2 {
+    margin-bottom: 10px;
+  }
+  
+  /* Grid for captured images */
+  .images-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  
+  .images-grid img {
+    width: 100px;
+    height: auto;
+    border: 2px solid #333;
+  }
+  
