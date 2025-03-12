@@ -4,7 +4,7 @@ from .config import config
 
 flags = [
     "--help", "--download", "--model", "--saved-model", "--train-new-model", "--train-model",
-    "--image-capture"
+    "--image-capture", "--run-tests"
 ]
 
 tf_load = [
@@ -55,6 +55,11 @@ def main():
         from .img_capture import save_archor_positive_image
         
         save_archor_positive_image()
+
+    if "--run-test" in argv:
+        from .testing import main
+
+        main()
 
 
 if __name__ == "__main__":
