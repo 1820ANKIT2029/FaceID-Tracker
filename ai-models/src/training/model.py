@@ -3,6 +3,8 @@ from tensorflow.keras import Model
 from tensorflow.keras.layers import Layer, Conv2D, MaxPooling2D, Flatten, Dense
 from tensorflow.keras.saving import register_keras_serializable
 
+import heapq
+
 from ..config import config
 
 IM_SIZE = config["IM_SIZE"]
@@ -80,30 +82,53 @@ class SiameseModel(Model):
         output = self.classifier(distance)
 
         return output
+    
+    def get_embedding_vector(self, img_name_list):
+        output = []
 
-    # def prediction(self, input_img, val_img_arr):
-    #     person = self.embedding(input_img)
+        embedding = None
 
-    #     name = None
-    #     max_ = -1
-    #     """
-    #     val_img_arr = (
-    #         ("Ankit kumar", [33, 4, 4, 534 ...]),
-    #         ("Anup kumar", [33, 4, 4, 534 ...]),
-    #         ("Ankit kumar", [33, 4, 4, 534 ...]),
-    #     )
-    #     """
-    #     for key, img_vec in val_img_arr:
-    #         t = some(img_vec)
+        for name, img in img_name_list:
+            img = tf.expand_dims(img, axis=0)
+            embedding_vec = self.embedding(img)
 
-    #         dist = self.l1_distance(person, t)
+            output.append((name, embedding_vec))
 
-    #         output = self.classifier(dist)
+        return output
 
-    #         if output > max_:
-    #             max_ = output
-    #             name = key
+    def custom_prediction(self, input_img, val_img_embedding):
+        input_img = tf.expand_dims(input_img, axis=0)
+        person = self.embedding(input_img)
 
-    #     return (name, max_)
+        pq = []
+        """
+        val_img_embedding = [
+            ("Ankit kumar", [33, 4, 4, 534 ...]),
+            ("Anup kumar", [33, 4, 4, 534 ...]),
+            ("Ankit kumar", [33, 4, 4, 534 ...]),
+        ]
+        """
+        for name, val_emb in val_img_embedding:
+            dist = self.l1_distance(person, val_emb)
+            output = self.classifier(dist)
+
+            output =  output.numpy().item()
+
+            if len(pq) < 3:
+                heapq.heappush(pq, (output, name))
+            else:
+                p, n = heapq.heappop(pq)
+                if output > p:
+                    heapq.heappush(pq, (output, name))
+                else:
+                    heapq.heappush(pq, (p, n))
+
+        value = []
+        while pq:
+            value.append(heapq.heappop(pq))
+
+        value.reverse()
+
+        return value
 
 custom_objects = {'SiameseModel': SiameseModel, 'EmbeddingModel': EmbeddingModel, 'L1Dist': L1Dist}

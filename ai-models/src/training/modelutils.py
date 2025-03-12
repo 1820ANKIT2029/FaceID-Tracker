@@ -98,5 +98,17 @@ def saved_model_detail():
     except NotADirectoryError:
         print(f"Error: Not a directory: {saved_models_folder}")
 
+def load_saved_model_optimal(path):
+    model = SiameseModel()
+    dummy_input = normal((1, config["IM_SIZE"], config["IM_SIZE"], 3))
+    model((dummy_input, dummy_input))
+    # model.load_weights(path, custom_objects=custom_objects)
+    model.load_weights(path)
+    
+    return model
 
+def load_saved_model(path):
+    model = load_model(path, custom_objects=custom_objects)
+
+    return model
     
