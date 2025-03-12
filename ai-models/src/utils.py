@@ -7,6 +7,40 @@ import tensorflow as tf
 
 from .config import config
 
+IM_SIZE = config["IM_SIZE"]
+
+def decode_img(img):
+    # img = tf.image.decode_image(img)         # Decode to tensor
+    img = tf.convert_to_tensor(img, dtype=tf.float32)
+    # Preprocessing steps - resizing the image to be 100x100x3
+    img = tf.image.resize(img, (IM_SIZE,IM_SIZE))
+    # Scale image to be between 0 and 1
+    img = img / 255.0
+
+    return img
+
+def get_image_names_and_paths(folder_path, extensions=(".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp")):
+    """
+    Returns a list of tuples (image_name, full_image_path) for all images in the folder.
+    
+    Args:
+        folder_path (str): Path to the folder containing images.
+        extensions (tuple): Tuple of image file extensions to look for.
+    
+    Returns:
+        List[Tuple[str, str]]: List of (image_name, full_path) pairs.
+    """
+    image_data = []
+
+    for file in os.listdir(folder_path):
+        if file.lower().endswith(extensions):
+            full_path = os.path.join(folder_path, file)
+            image_data.append((file, full_path))
+
+    return image_data
+
+def get_image_names_and_img(image_data):
+    return list(map(preprocess_name_and_img, image_data))
 
 
 def load_data(raw_data):
@@ -47,8 +81,10 @@ def load_data(raw_data):
 def preprocess_twin(input_img, validation_img, label):
     return ((preprocess(input_img), preprocess(validation_img)), label)
 
+def preprocess_name_and_img(data):
+    return (data[0], preprocess(data[1]))
+
 def preprocess(file_path):
-    IM_SIZE = config["IM_SIZE"]
     # Read in image from file path
     byte_img = tf.io.read_file(file_path)
     # Load in the image
