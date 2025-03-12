@@ -127,46 +127,56 @@ def load_data_raw():
     except OSError as e:
         print(f"An error occurred: {e}")
 
+    # negative raw data
+    NEG_PATH_P = os.path.join(NEG_PATH, "")
+    negative = tf.data.Dataset.list_files(NEG_PATH_P + '*.jpg')
+    negative_size = negative.cardinality().numpy()
+
+    archor_positive = []
+
     for p in POS_PATH_child_dir:
-        POS_PATH_P = os.path.join(POS_PATH, p, "")
-        NEG_PATH_P = os.path.join(NEG_PATH, "")
-        ANC_PATH_P = os.path.join(ANC_PATH, p, "")
+        try:
+            POS_PATH_P = os.path.join(POS_PATH, p, "")
+            ANC_PATH_P = os.path.join(ANC_PATH, p, "")
 
-        anchor = tf.data.Dataset.list_files(ANC_PATH_P + '*.jpg')
-        positive = tf.data.Dataset.list_files(POS_PATH_P + '*.jpg')
-        negative = tf.data.Dataset.list_files(NEG_PATH_P + '*.jpg')
+            anchor = tf.data.Dataset.list_files(ANC_PATH_P + '*.jpg')
+            positive = tf.data.Dataset.list_files(POS_PATH_P + '*.jpg')
 
-        anchor_size = anchor.cardinality().numpy()
-        negative_size = negative.cardinality().numpy()
-        positive_size = positive.cardinality().numpy()
+            archor_positive.append((anchor, positive))
+        except Exception as e:
+            print(f"Error processing class {p}: {e}")
+            continue
 
-        positives = tf.data.Dataset.zip((anchor, positive, tf.data.Dataset.from_tensor_slices(tf.ones(anchor_size))))
-        negatives = tf.data.Dataset.zip((anchor, negative.take(anchor_size), tf.data.Dataset.from_tensor_slices(tf.zeros(anchor_size))))
+    Data = None
 
-        negatives = None
-        i = 0
+    for anchor, positive in archor_positive:
+        try:
+            anchor = anchor.shuffle(buffer_size=10000)
+            positive = positive.shuffle(buffer_size=10000)
 
-        while i < negative_size:
-            neg_slice = negative.skip(i).take(anchor_size)
-            label_slice = tf.data.Dataset.from_tensor_slices(tf.zeros(anchor_size))
-            neg_dataset = tf.data.Dataset.zip((anchor, neg_slice, label_slice))
-            
-            if negatives is None:
-                negatives = neg_dataset
+            anchor_size = anchor.cardinality().numpy()
+            positive_size = positive.cardinality().numpy()
+
+            shuffled_negative = negative.shuffle(buffer_size=10000).take(anchor_size)
+
+            positives = tf.data.Dataset.zip((anchor, positive, tf.data.Dataset.from_tensor_slices(tf.ones(anchor_size))))
+            shuffled_negative = tf.data.Dataset.zip((anchor, shuffled_negative, tf.data.Dataset.from_tensor_slices(tf.zeros(anchor_size))))
+
+            if Data is None:
+                Data = positives.concatenate(shuffled_negative)
             else:
-                negatives = negatives.concatenate(neg_dataset)
-            
-            i += anchor_size
+                positives = positives.concatenate(shuffled_negative)
+                Data = positives.concatenate(shuffled_negative)
+        except GeneratorExit:
+            return
+        except Exception as e:
+            print(f"Error processing class {p}: {e}")
+            continue
 
-        if Data is None:
-            Data = positives.concatenate(negatives)
-        else:
-            Data = Data.concatenate(negatives)
-
-    return Data
+    return load_data(Data)
 
 
-def load_data_raw_generator():
+def load_data_generator():
     """
     Data = [
         (filename1, filename2, 1 or 0),
@@ -195,41 +205,54 @@ def load_data_raw_generator():
     except OSError as e:
         print(f"An error occurred: {e}")
 
+    # negative raw data
+    NEG_PATH_P = os.path.join(NEG_PATH, "")
+    negative = tf.data.Dataset.list_files(NEG_PATH_P + '*.jpg')
+    negative_size = negative.cardinality().numpy()
+
+    archor_positive = []
+
     for p in POS_PATH_child_dir:
-        POS_PATH_P = os.path.join(POS_PATH, p, "")
-        NEG_PATH_P = os.path.join(NEG_PATH, "")
-        ANC_PATH_P = os.path.join(ANC_PATH, p, "")
+        try:
+            POS_PATH_P = os.path.join(POS_PATH, p, "")
+            ANC_PATH_P = os.path.join(ANC_PATH, p, "")
 
-        anchor = tf.data.Dataset.list_files(ANC_PATH_P + '*.jpg')
-        positive = tf.data.Dataset.list_files(POS_PATH_P + '*.jpg')
-        negative = tf.data.Dataset.list_files(NEG_PATH_P + '*.jpg')
+            anchor = tf.data.Dataset.list_files(ANC_PATH_P + '*.jpg')
+            positive = tf.data.Dataset.list_files(POS_PATH_P + '*.jpg')
 
-        anchor_size = anchor.cardinality().numpy()
-        negative_size = negative.cardinality().numpy()
-        positive_size = positive.cardinality().numpy()
+            archor_positive.append((anchor, positive))
+        except Exception as e:
+            print(f"Error processing class {p}: {e}")
+            continue
 
-        positives = tf.data.Dataset.zip((anchor, positive, tf.data.Dataset.from_tensor_slices(tf.ones(anchor_size))))
-        negatives = tf.data.Dataset.zip((anchor, negative.take(anchor_size), tf.data.Dataset.from_tensor_slices(tf.zeros(anchor_size))))
-
-        negatives = None
-        i = 0
-
-        while i < negative_size:
-            neg_slice = negative.skip(i).take(anchor_size)
-            label_slice = tf.data.Dataset.from_tensor_slices(tf.zeros(anchor_size))
-            neg_dataset = tf.data.Dataset.zip((anchor, neg_slice, label_slice))
-
-            if negatives is None:
-                negatives = neg_dataset
-            else:
-                negatives = negatives.concatenate(neg_dataset)
-
-            i += anchor_size
-
-        Data = positives.concatenate(negatives)
-        yield load_data(Data)
-
+    for _ in range(config["GENERATOR_ITER"]):
         Data = None
+
+        for anchor, positive in archor_positive:
+            try:
+                anchor = anchor.shuffle(buffer_size=10000)
+                positive = positive.shuffle(buffer_size=10000)
+
+                anchor_size = anchor.cardinality().numpy()
+                positive_size = positive.cardinality().numpy()
+
+                shuffled_negative = negative.shuffle(buffer_size=10000).take(anchor_size)
+
+                positives = tf.data.Dataset.zip((anchor, positive, tf.data.Dataset.from_tensor_slices(tf.ones(anchor_size))))
+                shuffled_negative = tf.data.Dataset.zip((anchor, shuffled_negative, tf.data.Dataset.from_tensor_slices(tf.zeros(anchor_size))))
+
+                if Data is None:
+                    Data = positives.concatenate(shuffled_negative)
+                else:
+                    positives = positives.concatenate(shuffled_negative)
+                    Data = positives.concatenate(shuffled_negative)
+            except GeneratorExit:
+                return
+            except Exception as e:
+                print(f"Error processing class {p}: {e}")
+                continue
+
+        yield load_data(Data)
 
 def download_data(dataset_url, target_dir):
     os.makedirs(target_dir, exist_ok=True)
@@ -265,6 +288,7 @@ def download_data(dataset_url, target_dir):
     POS_PATH = config["POS_PATH"]
     NEG_PATH = config["NEG_PATH"]
     ANC_PATH = config["ANC_PATH"]
+    VAL_PATH = config["VAL_PATH"]
 
     if not os.path.exists(POS_PATH):
         os.makedirs(POS_PATH)
@@ -272,6 +296,8 @@ def download_data(dataset_url, target_dir):
         os.makedirs(NEG_PATH)
     if not os.path.exists(ANC_PATH):
         os.makedirs(ANC_PATH)
+    if not os.path.exists(VAL_PATH):
+        os.makedirs(VAL_PATH)
 
     for directory in os.listdir(path_image_dirs):
         for file in os.listdir(os.path.join(path_image_dirs, directory)):

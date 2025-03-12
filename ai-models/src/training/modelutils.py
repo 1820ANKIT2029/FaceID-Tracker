@@ -5,11 +5,11 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.metrics import BinaryAccuracy, Precision
 
 
-from os import listdir, path
+import os
 from time import strftime
 
 from .model import SiameseModel, custom_objects, SiameseModel
-from ..utils import load_data_raw_generator, load_data
+from ..utils import load_data_generator, load_data
 from ..config import config
 
 def training(saved_model_path=None):
@@ -44,8 +44,8 @@ def training(saved_model_path=None):
 
     model.summary()
 
-    data_gen = load_data_raw_generator()
-    history_list = []
+    data_gen = load_data_generator()
+    combined_history = {}
 
 
     for train_data, validation_data, test_data in data_gen:
@@ -57,7 +57,10 @@ def training(saved_model_path=None):
             verbose = 1
         )
 
-        history_list.append(history)
+        for key, values in history.history.items():
+            if key not in combined_history:
+                combined_history[key] = []
+            combined_history[key].extend(values)
 
         evaluation_metrics = model.evaluate(test_data)
         print("Test Evaluation:", dict(zip(model.metrics_names, evaluation_metrics)))
@@ -65,10 +68,10 @@ def training(saved_model_path=None):
     if saved_model_path:
         model.save(saved_model_path)
     else:
-        path = path.join(config["save_model_folder"], f'model-{strftime("%Y%m%d-%H%M%S")}.keras')
+        path = os.path.join(config["save_model_folder"], f'model-{strftime("%Y%m%d-%H%M%S")}.keras')
         model.save(path)
 
-    return history_list
+    return combined_history
 
 def model_detail():
     model = SiameseModel()
@@ -80,13 +83,13 @@ def saved_model_detail():
     saved_models_folder = config["save_model_folder"]
     saved_model_path = None
     try:
-        entries = listdir(saved_models_folder)
+        entries = os.listdir(saved_models_folder)
         for i, file in enumerate(entries):
             print(f"{i}. {file}")
 
         num = int(input("Enter file Number: "))
 
-        saved_model_path = path.join(saved_models_folder, entries[num])
+        saved_model_path = os.path.join(saved_models_folder, entries[num])
 
         model = load_model(saved_model_path, custom_objects=custom_objects)
 
