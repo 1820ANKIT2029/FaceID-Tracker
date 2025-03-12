@@ -1,11 +1,21 @@
 import time
 import os
-import tensorflow as tf
 
 from .config import config
 
 def main():
-    test4()
+    test5()
+
+def test5():
+    from .utils import load_data_generator
+
+    print("hii")
+
+    gen_data = load_data_generator()
+
+    for train_data, validation_data, test_data in gen_data:
+        print(train_data, validation_data, test_data)
+        break
 
 def test4():
     from .interence.Manager import ModelManager
@@ -28,6 +38,8 @@ def test3():
     print(get_image_names_and_img(get_image_names_and_paths(val_path)))
 
 def test2():
+    import tensorflow as tf
+
     path = os.path.join(config["save_model_folder"], "model-20250311-142854.keras")
     model = tf.keras.models.load_model(path)
 

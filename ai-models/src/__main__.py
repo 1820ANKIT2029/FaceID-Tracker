@@ -4,7 +4,7 @@ from .config import config
 
 flags = [
     "--help", "--download", "--model", "--saved-model", "--train-new-model", "--train-model",
-    "--image-capture", "--run-tests"
+    "--image-capture", "--run-test"
 ]
 
 tf_load = [
