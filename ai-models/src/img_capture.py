@@ -5,6 +5,21 @@ import uuid
 
 from .config import config
 
+def get_video_frame():
+    cap = cv2.VideoCapture(0)
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+
+        frame = frame[120:120+250, 200:200+250]
+
+        if cv2.waitKey(1) & 0XFF == ord('q'):
+            break
+
+        cv2.imshow('Image Collection', frame)
+
+    return frame
+
 def save_archor_positive_image():
     POS_PATH = config["POS_PATH"]
     NEG_PATH = config["NEG_PATH"]
