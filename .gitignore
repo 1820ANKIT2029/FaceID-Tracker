@@ -30,3 +30,6 @@ dist-ssr
 
 *.venv
 *venv
+
+ai-models/src/data
+ai-models/src/saved_models
