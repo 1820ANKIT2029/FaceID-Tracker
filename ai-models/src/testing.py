@@ -4,7 +4,7 @@ import os
 from .config import config
 
 def main():
-    test5()
+    test4()
 
 def test5():
     from .utils import load_data_generator
@@ -20,11 +20,16 @@ def test5():
 def test4():
     from .interence.Manager import ModelManager
     from .img_capture import get_video_frame
+    # import numpy as np
+    # np.set_printoptions(threshold=np.inf)
 
-    path = os.path.join(config["save_model_folder"], "model-20250311-190130.keras")
-    m = ModelManager(path, global_search=True)
+    path = os.path.join(config["save_model_folder"], "model-20250312-213558.keras")
+    m = ModelManager(path)
+    # m = ModelManager(path, global_search=True)
 
     frame = get_video_frame()
+
+    print(frame)
 
     pre = m.local_prediction(frame)
 
