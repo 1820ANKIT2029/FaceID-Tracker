@@ -15,5 +15,10 @@ Windows
 ```
 Git Bash on Windows
 ```bash
-source ./.venv/Script/activate
+source .venv/Scripts/activate
+```
+
+Run the server
+```bash
+uvicorn main:app --reload
 ```
