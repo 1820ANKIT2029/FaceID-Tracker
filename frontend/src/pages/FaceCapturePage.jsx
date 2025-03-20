@@ -80,6 +80,8 @@ const App = () => {
       .withFaceLandmarks()
       .withFaceExpressions();
 
+      console.log("hello",detection)
+
     if (detection) {
       // Extract the face region using the detection bounding box
       const faceCanvases = await faceapi.extractFaces(video, [detection.detection.box]);
@@ -123,3 +125,5 @@ const App = () => {
 };
 
 export default App;
+
+
