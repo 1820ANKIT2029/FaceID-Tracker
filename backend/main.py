@@ -37,10 +37,17 @@ async def predict(files: List[UploadFile] = File(...)):
         try:
             img_array = read_image_as_numpy(file)
             prediction = model_manager.local_prediction(img_array)
-            prediction_results.append(prediction)
+            
+            person_name = file.filename.split(".")[0]  
+            
+            prediction_results.append({
+                "name": person_name,
+                "probability": prediction[1]
+            })
         except Exception as e:
             prediction_results.append({"error": str(e)})
-    print(prediction)
+    
     return {
         "prediction_result": prediction_results
     }
+
