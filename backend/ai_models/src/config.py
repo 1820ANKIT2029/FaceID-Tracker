@@ -10,7 +10,7 @@ config = {
     "VAL_PATH": os.path.join(BASE_PATH, 'data', 'validation'),
 
     "dataset_url": "https://www.kaggle.com/api/v1/datasets/download/jessicali9530/lfw-dataset",
-    "save_model_folder": os.path.join(BASE_PATH, "saved_models"),
+    "save_model_folder": os.path.join(BASE_PATH, "saved_models/model-20250319-191114.keras"),
 
 
     "IM_SIZE": 100,
