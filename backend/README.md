@@ -1,5 +1,9 @@
 backend
 
+Download dependencies
+```
+pip install -r requirement.txt
+```bash
 
 Make and Activate Virtual env
 ```bash
@@ -15,5 +19,10 @@ Windows
 ```
 Git Bash on Windows
 ```bash
-source ./.venv/Script/activate
+source .venv/Scripts/activate
+```
+
+Run the server
+```bash
+uvicorn main:app --reload
 ```
