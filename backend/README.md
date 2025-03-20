@@ -1,5 +1,9 @@
 backend
 
+Download dependencies
+```
+pip install -r requirement.txt
+```bash
 
 Make and Activate Virtual env
 ```bash
