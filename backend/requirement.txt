@@ -5,3 +5,4 @@ numpy
 opencv-python
 python-multipart
 tensorflow==2.18.0
+requests
