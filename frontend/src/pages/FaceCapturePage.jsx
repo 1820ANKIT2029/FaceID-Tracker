@@ -6,6 +6,7 @@ const App = () => {
   const videoRef = useRef(null);
   const overlayContainerRef = useRef(null);
   const [capturedImages, setCapturedImages] = useState([]);
+  const [predictions, setPredictions] = useState([]);
 
   // Load face-api models and start the video stream when the component mounts
   useEffect(() => {
@@ -69,29 +70,76 @@ const App = () => {
     };
   }, []);
 
-  // Handle the "Click" button to capture the detected face as a PNG image
+  // Helper: Convert a data URL to a File object
+  const dataURLtoFile = (dataurl, filename) => {
+    const arr = dataurl.split(',');
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    if (!mimeMatch) return null;
+    const mime = mimeMatch[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while(n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+  };
+
+  // Handle the "Click" button to capture all detected faces as PNG images
   const handleCaptureFace = async () => {
     const video = videoRef.current;
     if (!video) return;
-
-    // Detect a single face from the current video frame
-    const detection = await faceapi
-      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+  
+    // Detect all faces with landmarks and expressions
+    const detections = await faceapi
+      .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
       .withFaceLandmarks()
       .withFaceExpressions();
-
-      console.log("hello",detection)
-
-    if (detection) {
-      // Extract the face region using the detection bounding box
-      const faceCanvases = await faceapi.extractFaces(video, [detection.detection.box]);
-      if (faceCanvases && faceCanvases.length > 0) {
-        // Convert the canvas to a PNG data URL
-        const dataUrl = faceCanvases[0].toDataURL('image/png');
-        setCapturedImages(prev => [...prev, dataUrl]);
-      }
+  
+    if (detections && detections.length > 0) {
+      // Extract faces using the bounding boxes from all detections
+      const faceCanvases = await faceapi.extractFaces(
+        video,
+        detections.map(det => det.detection.box)
+      );
+      // Convert each canvas to a PNG data URL and update the state
+      const newCapturedImages = faceCanvases.map(canvas =>
+        canvas.toDataURL('image/png')
+      );
+      setCapturedImages(prev => [...prev, ...newCapturedImages]);
     } else {
       alert('No face detected!');
+    }
+  };
+
+  // Handle sending captured faces to the backend for prediction
+  const handlePredict = async () => {
+    if (capturedImages.length === 0) {
+      alert("No captured images to predict");
+      return;
+    }
+    const formData = new FormData();
+    capturedImages.forEach((dataUrl, index) => {
+      const file = dataURLtoFile(dataUrl, `face_${index}.png`);
+      if (file) {
+        // Note: 'files' is the field name expected by the backend.
+        formData.append('files', file);
+      }
+    });
+
+    try {
+      const response = await fetch('http://localhost:8000/predict/', {
+        method: 'POST',
+        body: formData
+      });
+      if (!response.ok) {
+        throw new Error("Prediction request failed");
+      }
+      const data = await response.json();
+      console.log("data",data)
+      setPredictions(data.prediction_result);
+    } catch (error) {
+      console.error("Error during prediction:", error);
     }
   };
 
@@ -106,12 +154,15 @@ const App = () => {
           muted
           style={{ position: 'relative' }}
         />
-        {/* "Click" button positioned at the bottom of the video */}
+        {/* "Click" button to capture faces */}
         <button className="capture-button" onClick={handleCaptureFace}>
-          Click
+          Click (Capture Faces)
+        </button>
+        {/* Button to send captured faces for prediction */}
+        <button className="predict-button" onClick={handlePredict}>
+          Predict Faces
         </button>
       </div>
-      {/* Display captured images under the heading "Captured Images" */}
       <div className="captured-images-container">
         <h2>Captured Images</h2>
         <div className="images-grid">
@@ -120,10 +171,16 @@ const App = () => {
           ))}
         </div>
       </div>
+      <div className="predictions-container">
+        <h2>Prediction Results</h2>
+        <ul>
+          {predictions?.length > 0 ? (predictions.map((pred, index) => (
+            <li key={index}>Face {index + 1}: {JSON.stringify(pred)}</li>
+          ))): ("ehlaol")}
+        </ul>
+      </div>
     </div>
   );
 };
 
 export default App;
-
-
