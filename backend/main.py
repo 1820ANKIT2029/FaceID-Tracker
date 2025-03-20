@@ -3,8 +3,19 @@ import cv2
 import numpy as np
 from ai_models.src.inference.Manager import ModelManager
 from ai_models.src.config import config
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+# CORS Configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows requests from all origins (for development)
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allows all headers
+)
 
 # Instantiated ModelManager 
 model_manager = ModelManager(model_path=config["save_model_folder"], global_search=False)
