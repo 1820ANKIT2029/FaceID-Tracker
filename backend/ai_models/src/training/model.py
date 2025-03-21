@@ -1,34 +1,75 @@
 import tensorflow as tf
 from tensorflow.keras import Model
-from tensorflow.keras.layers import Layer, Conv2D, MaxPooling2D, Flatten, Dense
+from tensorflow.keras.layers import Layer, Conv2D, MaxPooling2D, Flatten, Dense, BatchNormalization
 from tensorflow.keras.saving import register_keras_serializable
+from tensorflow.keras.regularizers import L2
+from tensorflow.keras.initializers import RandomNormal
 
 import heapq
 
 from ..config import config
 
 IM_SIZE = config["IM_SIZE"]
+REGULARIZATION_RATE = config["REGULARIZATION_RATE"]
 
 class EmbeddingModel(Model):
     def __init__(self, **kwargs):
         super(EmbeddingModel, self).__init__(name='embedding', **kwargs)
 
         # First block
-        self.conv1 = Conv2D(64, (10, 10), activation='relu')
-        self.pool1 = MaxPooling2D((2, 2), padding='same')
+        self.conv1 = Conv2D(
+            filters=64,
+            kernel_size=(10, 10),
+            activation='relu',
+            kernel_initializer=RandomNormal(mean=0.0, stddev=1e-2),
+            bias_initializer=RandomNormal(mean=0.5, stddev=1e-2),
+            kernel_regularizer=L2(REGULARIZATION_RATE)
+        )
+        BatchNormalization()
+        self.pool1 = MaxPooling2D((2, 2), strides=2, padding='valid')
 
         # Second block
-        self.conv2 = Conv2D(128, (7, 7), activation='relu')
-        self.pool2 = MaxPooling2D((2, 2), padding='same')
+        self.conv2 = Conv2D(
+            filters=128,
+            kernel_size=(7, 7),
+            activation='relu',
+            kernel_initializer=RandomNormal(mean=0.0, stddev=1e-2),
+            bias_initializer=RandomNormal(mean=0.5, stddev=1e-2),
+            kernel_regularizer=L2(REGULARIZATION_RATE)
+        )
+        BatchNormalization()
+        self.pool2 = MaxPooling2D((2, 2), strides=2, padding='valid')
 
         # Third block
-        self.conv3 = Conv2D(128, (4, 4), activation='relu')
-        self.pool3 = MaxPooling2D((2, 2), padding='same')
+        self.conv3 = Conv2D(
+            filters=128,
+            kernel_size=(4, 4),
+            activation='relu',
+            kernel_initializer=RandomNormal(mean=0.0, stddev=1e-2),
+            bias_initializer=RandomNormal(mean=0.5, stddev=1e-2),
+            kernel_regularizer=L2(REGULARIZATION_RATE)
+        )
+        BatchNormalization()
+        self.pool3 = MaxPooling2D((2, 2), strides=2, padding='valid')
 
         # Final embedding block
-        self.conv4 = Conv2D(256, (4, 4), activation='relu')
+        self.conv4 = Conv2D(
+            filters=256,
+            kernel_size=(4, 4),
+            activation='relu',
+            kernel_initializer=RandomNormal(mean=0.0, stddev=1e-2),
+            bias_initializer=RandomNormal(mean=0.5, stddev=1e-2),
+            kernel_regularizer=L2(REGULARIZATION_RATE)
+        )
+        BatchNormalization()
         self.flatten = Flatten()
-        self.dense = Dense(4096, activation='sigmoid')
+        self.dense = Dense(
+            4096,
+            activation='sigmoid',
+            kernel_initializer=RandomNormal(mean=0.0, stddev=2e-1),
+            bias_initializer=RandomNormal(mean=0.5, stddev=1e-2),
+            kernel_regularizer=L2(REGULARIZATION_RATE)
+        )
 
     def call(self, inputs):
         x = self.conv1(inputs)
@@ -64,7 +105,13 @@ class SiameseModel(Model):
 
         self.l1_distance = L1Dist()
 
-        self.classifier = Dense(1, activation='sigmoid')
+        self.classifier = Dense(
+            1,
+            activation='sigmoid',
+            kernel_initializer=RandomNormal(mean=0.0, stddev=2e-1),
+            bias_initializer=RandomNormal(mean=0.5, stddev=1e-2),
+            kernel_regularizer=L2(REGULARIZATION_RATE)
+        )
 
     def call(self, inputs):
         input_image, validation_image = inputs[0], inputs[1]
@@ -82,7 +129,7 @@ class SiameseModel(Model):
         output = self.classifier(distance)
 
         return output
-    
+
     def get_embedding_vector(self, img_name_list):
         output = []
 

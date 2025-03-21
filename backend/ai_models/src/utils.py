@@ -2,6 +2,8 @@ import os
 import shutil
 import requests
 import zipfile
+import random
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import tensorflow as tf
 
@@ -79,25 +81,40 @@ def load_data(raw_data):
     return train_data, validation_data, test_data
 
 def preprocess_twin(input_img, validation_img, label):
+    label = tf.cast(label, tf.float32)
     return ((preprocess(input_img), preprocess(validation_img)), label)
 
 def preprocess_name_and_img(data):
     return (data[0], preprocess(data[1]))
 
 def preprocess(file_path):
-    # Read in image from file path
+    IM_SIZE = config["IM_SIZE"]
+    
+    # Read image file
     byte_img = tf.io.read_file(file_path)
-    # Load in the image
-    img = tf.io.decode_jpeg(byte_img)
+    
+    # Automatically decode image (supports PNG, JPEG, BMP, GIF, etc.)
+    img = tf.image.decode_image(byte_img, channels=0, expand_animations=False)
 
-    # Preprocessing steps - resizing the image to be 100x100x3
-    img = tf.image.resize(img, (IM_SIZE,IM_SIZE))
-    # Scale image to be between 0 and 1
+    # If it has 4 channels (RGBA), convert to RGB
+    img = tf.cond(
+        tf.shape(img)[-1] == 4,
+        lambda: img[:, :, :3],
+        lambda: img
+    )
+    
+    # Ensure image has shape (height, width, 3)
+    img.set_shape([None, None, 3])
+    
+    # Resize image
+    img = tf.image.resize(img, (IM_SIZE, IM_SIZE))
+    
+    # Normalize pixel values
     img = img / 255.0
-
-    # Return image
+    
     return img
 
+# made during test (currently no use)
 def load_data_raw():
     """
     Data = [
@@ -175,7 +192,7 @@ def load_data_raw():
 
     return load_data(Data)
 
-
+# Generator need to use for LFW, VGGFaces dataset
 def load_data_generator():
     """
     Data = [
@@ -254,6 +271,173 @@ def load_data_generator():
 
         yield load_data(Data)
 
+# Generator need to use for DigiFace dataset
+def load_data_generator2():
+    gen_no = config["DigiFace_gen_no"]
+    random.shuffle(config["combination_data_folder"])
+    P_list = config["combination_data_folder"][:gen_no]
+
+    for p1, p2 in P_list:
+        p1_path = os.path.join(config["data_folder"], p1)
+        p2_path = os.path.join(config["data_folder"], p2)
+
+        try:
+            p1_path_child = os.listdir(p1_path)
+            p2_path_child = os.listdir(p2_path)
+            for p in p1_path_child:
+                if p.startswith("."):
+                    p1_path_child.remove(p)
+            for p in p2_path_child:
+                if p.startswith("."):
+                    p2_path_child.remove(p)
+        except OSError as e:
+            print(f"An error occurred: {e}")
+
+        Data = None
+
+        for f1, f2 in zip(p1_path_child, p2_path_child):
+            f1_path = os.path.join(p1_path, f1, "")
+            f2_path = os.path.join(p2_path, f2, "")
+
+            f1_img = tf.data.Dataset.list_files(f1_path + '*.png').shuffle(buffer_size=100)
+            f2_img = tf.data.Dataset.list_files(f2_path + '*.png').shuffle(buffer_size=100)
+
+            f1_size = f1_img.cardinality().numpy()
+            f2_size = f2_img.cardinality().numpy()
+
+            negative = tf.data.Dataset.zip((f1_img, f2_img, tf.data.Dataset.from_tensor_slices(tf.zeros(f1_size))))
+            positive1 = tf.data.Dataset.zip((f1_img.take(f1_size//2), f1_img.skip(f1_size//2).take(f1_size//2), tf.data.Dataset.from_tensor_slices(tf.ones(f1_size//2))))
+            positive2 = tf.data.Dataset.zip((f2_img.take(f2_size//2), f2_img.skip(f2_size//2).take(f2_size//2), tf.data.Dataset.from_tensor_slices(tf.ones(f2_size//2))))
+            positive = positive1.concatenate(positive2)
+
+            if Data is None:
+                Data = positive.concatenate(negative)
+            else:
+                positive = positive.concatenate(negative)
+                Data = positive.concatenate(negative)
+
+        yield load_data(Data)
+
+# download zip and extract files from given url
+# target_dir = config["data_folder"]
+# folder name eg = "P1", "LFW", "VGGFFaces"  ...
+def download_file(name, url, target_dir):
+    zip_path = os.path.join(target_dir, f"{name}.zip")
+    path = os.path.join(target_dir, name)
+
+    try:
+        print(f"Starting download for {name} from {url}...")
+
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()
+            with open(zip_path, 'wb') as f_out:
+                for chunk in r.iter_content(chunk_size=8192):
+                    if chunk:
+                        f_out.write(chunk)
+
+            # Extract the ZIP file
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+            zip_ref.extractall(path)
+
+        # Remove the ZIP file after extraction
+        os.remove(zip_path)
+
+        print(f"[✓] Finished downloading {name}")
+        return path
+
+    except requests.exceptions.RequestException as e:
+        print(f"[✗] Failed to download {name}: {e}")
+        return None
+
+# download dataset (DigiFace)
+# target_dir = config["data_folder"]
+def download_DigiFace(target_dir):
+    os.makedirs(target_dir, exist_ok=True)
+
+    file_names = ["P1", "P2", "P3", "P4", "P5"]
+    file_paths = []
+
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_file = {
+            executor.submit(download_file, name, config.get(name), target_dir): name
+            for name in file_names if name in config
+        }
+
+        for future in as_completed(future_to_file):
+            result = future.result()
+            if result:
+                file_paths.append(result)
+
+    return file_paths
+
+# download dataset (VGGFaces)
+# target_dir = config["data_folder"]
+# dataset_url = config["dataset_url2"]
+def download_data2(dataset_url, target_dir):
+    zip_path = os.path.join(target_dir, "data2.zip")
+    path = os.path.join(target_dir, 'VGGFace2')
+
+    print("Downloading Dataset...")
+
+    response = requests.get(dataset_url, stream=True)
+    if response.status_code == 200:
+        with open(zip_path, "wb") as file:
+            for chunk in response.iter_content(chunk_size=1024):
+                file.write(chunk)
+
+        # Extract the ZIP file
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+            zip_ref.extractall(path)
+
+        # Remove the ZIP file after extraction
+        os.remove(zip_path)
+
+        print(f"Data downloaded and extracted to '{target_dir}'")
+    else:
+        print("Failed to download the file")
+
+    POS_PATH = config["POS_PATH"]             # to 1
+    NEG_PATH = config["NEG_PATH"]
+    ANC_PATH = config["ANC_PATH"]             # to 2
+
+    trainPath = os.path.join(path, 'train')   # from
+    valPath = os.path.join(path, 'val')
+
+    for dir in [trainPath, valPath]:
+        items = os.listdir(dir)
+        for i in items:
+            p = os.path.join(dir, i)
+            pos_i = os.path.join(POS_PATH, i)
+            anc_i = os.path.join(ANC_PATH, i)
+            os.makedirs(pos_i, exist_ok=True)
+            os.makedirs(anc_i, exist_ok=True)
+
+            img  = os.listdir(p)
+
+            half = len(img) // 2
+            first_half = img[:half]
+            second_half = img[half:]
+
+            # Move first half
+            for item in first_half:
+                shutil.move(os.path.join(p, item), os.path.join(pos_i, item))
+
+            # Move second half
+            for item in second_half:
+                shutil.move(os.path.join(p, item), os.path.join(anc_i, item))
+
+    try:
+        shutil.rmtree(path)
+        print(f"Directory '{path}' and its contents removed successfully.")
+    except FileNotFoundError:
+        print(f"Directory '{path}' not found.")
+    except OSError as e:
+        print(f"Error: {e}")
+    print("Download data done!!")
+
+# download dataset (LFW)
+# target_dir = config["data_folder"]
+# dataset_url = config["dataset_url"]
 def download_data(dataset_url, target_dir):
     os.makedirs(target_dir, exist_ok=True)
 
@@ -313,7 +497,6 @@ def download_data(dataset_url, target_dir):
     except OSError as e:
         print(f"Error: {e}")
     print("Download data done!!")
-
 
 
 def main():

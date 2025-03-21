@@ -1,4 +1,4 @@
-import sys
+import sys, os
 
 from .config import config
 
@@ -19,6 +19,8 @@ for i in tf_load:
 
 def main():
     argv = sys.argv
+
+    make_imp_file()
 
     if len(argv) == 1:
         print("python -m src <flags>")
@@ -57,10 +59,30 @@ def main():
         save_archor_positive_image()
 
     if "--run-test" in argv:
-        from .testing import main
+        from .testing import main as func1
 
-        main()
+        func1()
 
+def make_imp_file():
+    DATA_PATH = config["data_folder"]
+    POS_PATH = config["POS_PATH"]
+    NEG_PATH = config["NEG_PATH"]
+    ANC_PATH = config["ANC_PATH"]
+    VAL_PATH = config["VAL_PATH"]
+    SAVED_MODEL_PATH = config["save_model_folder"]
+
+    if not os.path.exists(DATA_PATH):
+        os.makedirs(DATA_PATH)
+    if not os.path.exists(POS_PATH):
+        os.makedirs(POS_PATH)
+    if not os.path.exists(NEG_PATH):
+        os.makedirs(NEG_PATH)
+    if not os.path.exists(ANC_PATH):
+        os.makedirs(ANC_PATH)
+    if not os.path.exists(VAL_PATH):
+        os.makedirs(VAL_PATH)
+    if not os.path.exists(SAVED_MODEL_PATH):
+        os.makedirs(SAVED_MODEL_PATH)
 
 if __name__ == "__main__":
     main()

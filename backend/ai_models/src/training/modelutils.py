@@ -3,17 +3,23 @@ from tensorflow.random import normal
 from tensorflow.keras.losses import BinaryCrossentropy
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.metrics import BinaryAccuracy, Precision
+from tensorflow.keras.callbacks import ReduceLROnPlateau, LearningRateScheduler
 
 
 import os
 from time import strftime
 
 from .model import SiameseModel, custom_objects, SiameseModel
-from ..utils import load_data_generator, load_data
 from ..config import config
 
-def training(saved_model_path=None):
+def training(generator, saved_model_path=None):
     model = None
+
+    def scheduler(epoch, lr):
+      return lr * 0.99  # reduce after 1 epochs
+
+    lr_callback = LearningRateScheduler(scheduler)
+    lr_scheduler = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5)
 
     # checkpoint_callback = ModelCheckpoint(
     #     'best_weights.keras',
@@ -44,7 +50,7 @@ def training(saved_model_path=None):
 
     model.summary()
 
-    data_gen = load_data_generator()
+    data_gen = generator()
     combined_history = {}
 
 
@@ -54,7 +60,8 @@ def training(saved_model_path=None):
             train_data,
             validation_data = validation_data,
             epochs = config["EPOCHS"],
-            verbose = 1
+            verbose = 1,
+            callbacks = [lr_callback, lr_scheduler]
         )
 
         for key, values in history.history.items():
@@ -65,6 +72,7 @@ def training(saved_model_path=None):
         evaluation_metrics = model.evaluate(test_data)
         print("Test Evaluation:", dict(zip(model.metrics_names, evaluation_metrics)))
 
+    os.makedirs(config["save_model_folder"], exist_ok=True)
     if saved_model_path:
         model.save(saved_model_path)
     else:
