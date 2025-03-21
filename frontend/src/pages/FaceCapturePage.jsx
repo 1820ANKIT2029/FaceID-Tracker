@@ -5,10 +5,9 @@ import '../App.css';
 const App = () => {
   const videoRef = useRef(null);
   const overlayContainerRef = useRef(null);
-  const [capturedImages, setCapturedImages] = useState([]);
+  const canvasRef = useRef(null);
   const [predictions, setPredictions] = useState([]);
 
-  // Load face-api models and start the video stream when the component mounts
   useEffect(() => {
     Promise.all([
       faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
@@ -23,161 +22,129 @@ const App = () => {
   const startVideo = () => {
     navigator.mediaDevices.getUserMedia({ video: {} })
       .then(stream => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
+        if (videoRef.current) videoRef.current.srcObject = stream;
       })
       .catch(err => console.error('Error accessing the camera:', err));
   };
 
-  // Set up an overlay canvas for continuous face detection
   useEffect(() => {
     const video = videoRef.current;
     let detectionInterval;
-    const handlePlay = () => {
-      // Create and append the overlay canvas
-      const canvas = faceapi.createCanvasFromMedia(video);
-      if (overlayContainerRef.current) {
-        overlayContainerRef.current.appendChild(canvas);
+
+    const handlePlay = async () => {
+      if (!canvasRef.current) {
+        canvasRef.current = faceapi.createCanvasFromMedia(video);
+        if (overlayContainerRef.current) {
+          overlayContainerRef.current.appendChild(canvasRef.current);
+          canvasRef.current.style.position = 'absolute';
+          canvasRef.current.style.top = '0';
+          canvasRef.current.style.left = '0';
+        }
       }
-      const displaySize = { width: video.width, height: video.height };
-      faceapi.matchDimensions(canvas, displaySize);
 
       detectionInterval = setInterval(async () => {
-        const detections = await faceapi
-          .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
-          .withFaceLandmarks()
-          .withFaceExpressions();
-        const resizedDetections = faceapi.resizeResults(detections, displaySize);
+        const canvas = canvasRef.current;
+        const displaySize = video.getBoundingClientRect();
+        canvas.width = displaySize.width;
+        canvas.height = displaySize.height;
+        faceapi.matchDimensions(canvas, displaySize);
+      
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        faceapi.draw.drawDetections(canvas, resizedDetections);
+      
+        const detections = await faceapi
+          .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+          .withFaceLandmarks();
+      
+        const resizedDetections = faceapi.resizeResults(detections, displaySize);
         faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
-        faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
-      }, 100);
+      
+        if (detections.length > 0) {
+          const predResults = await uploadImagesSequentially(video, detections.map(det => det.detection.box));
+          setPredictions(predResults);
+      
+          resizedDetections.forEach((detection, index) => {
+            const { x, y, width, height } = detection.detection.box;
+            const pred = predResults[index];
+            
+            ctx.strokeStyle = 'blue';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, width, height);
+
+            let labels = `${pred.name} (${(pred.probability * 100).toFixed(1)}%)`
+            if(pred.name == "unknown"){
+              labels = `${pred.name}`;
+            }
+            else{
+                labels = `${pred.name} (${(pred.probability * 100).toFixed(1)}%)`;
+            }
+      
+            if (pred) {
+              const label = labels;
+              ctx.fillStyle = 'blue';
+              ctx.fillRect(x, y, width, 20);
+      
+              ctx.fillStyle = 'white';
+              ctx.font = '14px Arial';
+              ctx.fillText(label, x + 5, y + 15);
+            }
+          });
+        } else {
+          setPredictions([]);
+        }
+      }, 1000);
+      
     };
 
     if (video) {
       video.addEventListener('play', handlePlay);
     }
+
     return () => {
-      if (video) {
-        video.removeEventListener('play', handlePlay);
-      }
-      if (detectionInterval) {
-        clearInterval(detectionInterval);
-      }
+      if (video) video.removeEventListener('play', handlePlay);
+      if (detectionInterval) clearInterval(detectionInterval);
     };
   }, []);
 
-  // Helper: Convert a data URL to a File object
-  const dataURLtoFile = (dataurl, filename) => {
-    const arr = dataurl.split(',');
-    const mimeMatch = arr[0].match(/:(.*?);/);
-    if (!mimeMatch) return null;
-    const mime = mimeMatch[1];
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while(n--) {
-      u8arr[n] = bstr.charCodeAt(n);
-    }
-    return new File([u8arr], filename, { type: mime });
-  };
-
-  // Handle the "Click" button to capture all detected faces as PNG images
-  const handleCaptureFace = async () => {
-    const video = videoRef.current;
-    if (!video) return;
-  
-    // Detect all faces with landmarks and expressions
-    const detections = await faceapi
-      .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
-      .withFaceLandmarks()
-      .withFaceExpressions();
-  
-    if (detections && detections.length > 0) {
-      // Extract faces using the bounding boxes from all detections
-      const faceCanvases = await faceapi.extractFaces(
+  const uploadImagesSequentially = async (video, faceBoxes) => {
+    const results = [];
+    for (let i = 0; i < faceBoxes.length; i++) {
+      const faceCanvas = document.createElement('canvas');
+      const ctx = faceCanvas.getContext('2d');
+      faceCanvas.width = faceBoxes[i].width;
+      faceCanvas.height = faceBoxes[i].height;
+      ctx.drawImage(
         video,
-        detections.map(det => det.detection.box)
+        faceBoxes[i].x, faceBoxes[i].y, faceBoxes[i].width, faceBoxes[i].height,
+        0, 0, faceBoxes[i].width, faceBoxes[i].height
       );
-      // Convert each canvas to a PNG data URL and update the state
-      const newCapturedImages = faceCanvases.map(canvas =>
-        canvas.toDataURL('image/png')
-      );
-      setCapturedImages(prev => [...prev, ...newCapturedImages]);
-    } else {
-      alert('No face detected!');
-    }
-  };
 
-  // Handle sending captured faces to the backend for prediction
-  const handlePredict = async () => {
-    if (capturedImages.length === 0) {
-      alert("No captured images to predict");
-      return;
-    }
-    const formData = new FormData();
-    capturedImages.forEach((dataUrl, index) => {
-      const file = dataURLtoFile(dataUrl, `face_${index}.png`);
-      if (file) {
-        // Note: 'files' is the field name expected by the backend.
-        formData.append('files', file);
-      }
-    });
+      const blob = await new Promise(resolve => faceCanvas.toBlob(resolve, 'image/png'));
+      const formData = new FormData();
+      formData.append('files', blob, `face_${i}.png`);
 
-    try {
-      const response = await fetch('http://localhost:8000/predict/', {
-        method: 'POST',
-        body: formData
-      });
-      if (!response.ok) {
-        throw new Error("Prediction request failed");
+      try {
+        const response = await fetch('http://127.0.0.1:8000/predict/', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) throw new Error(`Error: ${response.status}`);
+        const data = await response.json();
+
+        results.push(data.prediction_result[0]); // Assuming each API returns a single prediction per face
+      } catch (error) {
+        console.error('Error in face prediction:', error);
+        results.push({ name: 'Unknown', probability: 0 });
       }
-      const data = await response.json();
-      console.log("data",data)
-      setPredictions(data.prediction_result);
-    } catch (error) {
-      console.error("Error during prediction:", error);
     }
+    return results;
   };
 
   return (
     <div className="app-container">
       <div className="video-container" ref={overlayContainerRef}>
-        <video
-          ref={videoRef}
-          width="720"
-          height="560"
-          autoPlay
-          muted
-          style={{ position: 'relative' }}
-        />
-        {/* "Click" button to capture faces */}
-        <button className="capture-button" onClick={handleCaptureFace}>
-          Click (Capture Faces)
-        </button>
-        {/* Button to send captured faces for prediction */}
-        <button className="predict-button" onClick={handlePredict}>
-          Predict Faces
-        </button>
-      </div>
-      <div className="captured-images-container">
-        <h2>Captured Images</h2>
-        <div className="images-grid">
-          {capturedImages.map((imgSrc, index) => (
-            <img key={index} src={imgSrc} alt={`Captured face ${index + 1}`} />
-          ))}
-        </div>
-      </div>
-      <div className="predictions-container">
-        <h2>Prediction Results</h2>
-        <ul>
-          {predictions?.length > 0 ? (predictions.map((pred, index) => (
-            <li key={index}>Face {index + 1}: {JSON.stringify(pred)}</li>
-          ))): ("ehlaol")}
-        </ul>
+        <video ref={videoRef} width="720" height="560" autoPlay muted style={{ position: 'relative' }} />
       </div>
     </div>
   );

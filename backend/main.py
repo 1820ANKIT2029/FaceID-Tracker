@@ -32,22 +32,25 @@ async def predict(files: List[UploadFile] = File(...)):
     if not files:
         raise HTTPException(status_code=400, detail="No files uploaded")
     
+    for file in files:
+        print(f"Received file: {file.filename}, Size: {len(await file.read())} bytes")  # Debug line
+    
     prediction_results = []
     for file in files:
         try:
+            file.file.seek(0)
             img_array = read_image_as_numpy(file)
             prediction = model_manager.local_prediction(img_array)
-            
-            person_name = file.filename.split(".")[0]  
-            
+            person_name = prediction[0][1].split(".")[0]
+            probability = prediction[0][0]
+            if(prediction[0][0] < 0.4):
+                person_name = "unknown"
+
             prediction_results.append({
                 "name": person_name,
-                "probability": prediction[1]
+                "probability": probability
             })
         except Exception as e:
             prediction_results.append({"error": str(e)})
     
-    return {
-        "prediction_result": prediction_results
-    }
-
+    return {"prediction_result": prediction_results}
