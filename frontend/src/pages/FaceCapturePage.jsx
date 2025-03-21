@@ -108,38 +108,53 @@ const App = () => {
 
   const uploadImagesSequentially = async (video, faceBoxes) => {
     const results = [];
+    const targetSize = 128; // Resize target
+  
     for (let i = 0; i < faceBoxes.length; i++) {
       const faceCanvas = document.createElement('canvas');
       const ctx = faceCanvas.getContext('2d');
-      faceCanvas.width = faceBoxes[i].width;
-      faceCanvas.height = faceBoxes[i].height;
+      faceCanvas.width = targetSize;
+      faceCanvas.height = targetSize;
+  
+      // Apply mild blur filter for denoising
+      ctx.filter = 'blur(1px)';
       ctx.drawImage(
         video,
         faceBoxes[i].x, faceBoxes[i].y, faceBoxes[i].width, faceBoxes[i].height,
-        0, 0, faceBoxes[i].width, faceBoxes[i].height
+        0, 0, targetSize, targetSize
       );
-
+      ctx.filter = 'none';
+  
+      // Optional: Convert to grayscale if your model supports it
+      const imgData = ctx.getImageData(0, 0, targetSize, targetSize);
+      for (let j = 0; j < imgData.data.length; j += 4) {
+        const avg = (imgData.data[j] + imgData.data[j + 1] + imgData.data[j + 2]) / 3;
+        imgData.data[j] = imgData.data[j + 1] = imgData.data[j + 2] = avg;
+      }
+      ctx.putImageData(imgData, 0, 0);
+  
       const blob = await new Promise(resolve => faceCanvas.toBlob(resolve, 'image/png'));
       const formData = new FormData();
       formData.append('files', blob, `face_${i}.png`);
-
+  
       try {
         const response = await fetch('http://127.0.0.1:8000/predict/', {
           method: 'POST',
           body: formData
         });
-
+  
         if (!response.ok) throw new Error(`Error: ${response.status}`);
         const data = await response.json();
-
-        results.push(data.prediction_result[0]); // Assuming each API returns a single prediction per face
+        results.push(data.prediction_result[0]);
       } catch (error) {
         console.error('Error in face prediction:', error);
         results.push({ name: 'Unknown', probability: 0 });
       }
     }
+  
     return results;
   };
+  
 
   return (
     <div className="app-container">
