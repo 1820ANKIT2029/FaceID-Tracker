@@ -18,7 +18,7 @@ app.add_middleware(
 )
 
 # Instantiated ModelManager 
-model_manager = ModelManager(model_path=config["save_model_folder"], global_search=False)
+model_manager = ModelManager(model_path=config["Prediction_Model"], global_search=False)
 
 def read_image_as_numpy(file: UploadFile) -> np.ndarray:
     """Convert an uploaded image file to a NumPy array."""
@@ -32,19 +32,17 @@ async def predict(files: List[UploadFile] = File(...)):
     if not files:
         raise HTTPException(status_code=400, detail="No files uploaded")
     
-    for file in files:
-        print(f"Received file: {file.filename}, Size: {len(await file.read())} bytes")  # Debug line
-    
     prediction_results = []
     for file in files:
         try:
             file.file.seek(0)
             img_array = read_image_as_numpy(file)
             prediction = model_manager.local_prediction(img_array)
+            print(prediction)
             person_name = prediction[0][1].split(".")[0]
             probability = prediction[0][0]
-            if(prediction[0][0] < 0.4):
-                person_name = "unknown"
+            # if(prediction[0][0] < 0.4):
+            #     person_name = "unknown"
 
             prediction_results.append({
                 "name": person_name,
