@@ -11,6 +11,7 @@ config = {
     "ANC_PATH": os.path.join(BASE_PATH, 'data', 'anchor'),
     "VAL_PATH": os.path.join(BASE_PATH, 'data', 'validation'),
     "save_model_folder": os.path.join(BASE_PATH, "saved_models"),
+    "Prediction_Model": os.path.join(BASE_PATH, "saved_models","model.keras"),
 
     # LFW Dataset
     "dataset_url": "https://www.kaggle.com/api/v1/datasets/download/jessicali9530/lfw-dataset",
