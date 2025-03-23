@@ -3,52 +3,38 @@
 ```bash
 project-root/
 │
-├── frontend/                   # React or Next.js frontend
+├── frontend/                       # React frontend
 │   ├── public/
-│   │   └── models/             # Pre-trained models (e.g., face-api.js)
+│   │   └── models/                 # Pre-trained models (e.g., face-api.js)
 │   ├── src/
-│   │   ├── assets/             # Images, logos, fonts
-│   │   ├── components/         # Reusable UI components
-│   │   ├── pages/              # Route-level pages (for Next.js)
-│   │   ├── features/           # Feature-based components (optional)
-│   │   ├── hooks/              # Custom React hooks
-│   │   ├── services/           # API calls or frontend utilities
-│   │   ├── utils/              # Helper functions
-│   │   ├── styles/             # Tailwind, CSS, or SCSS files
-│   │   ├── config/             # Frontend app configs
+│   │   ├── pages/
+│   │   │    ├── FaceCapturePage.jsx
+│   │   │    ├── Header.jsx
+│   │   │    └── Table.jsx
+│   │   ├── App.css
 │   │   ├── App.jsx
-│   │   └── main.jsx            # Vite/React entry
-│   └── vite.config.js / next.config.js
+│   │   ├── index.css
+│   │   └── main.jsx
+│   └── vite.config.js
 │
-├── backend/                   # Node.js, Express, Python  (FastApi)
-│   ├── api/                    # Routes / Controllers
-│   ├── models/                 # Mongoose/SQL/ML models
-│   ├── services/               # Business logic (e.g., face recognition)
-│   ├── utils/                  # Utility functions
-│   ├── config/                 # Environment config, DB config
-│   ├── middleware/             # Auth, validation, error handling
-│   ├── tests/                  # Unit & integration tests
-│   ├── app.js / server.js
-│   └── .env
-│
-├── ai-models/                # Trained AI/ML models & code
-│   ├── notebooks/             # Jupyter notebooks for experimentation
-│   ├── preprocessing/         # Data cleaning, augmentation scripts
-│   ├── training/              # Model training scripts
-│   ├── saved_models/          # .h5/.pt/.pkl model files
-│   ├── inference/             # Inference scripts / REST wrappers
-│   └── requirements.txt
-│
-├── data/                     # Datasets (raw/processed)
-│   ├── raw/
-│   └── processed/
-│
-├── deployment/              # Docker, CI/CD, Kubernetes, Nginx configs
-│   ├── docker/
-│   ├── nginx/
-│   └── scripts/
+├── backend/                          # FastAPI
+│   ├── ai-models/                    # Trained AI/ML models & code
+│   │     ├── src/                    # Jupyter notebooks for experimentation
+│   │     │   ├── data/               # Contains images - positive, negative, anchor, validation
+│   │     │   ├── inference/
+│   │     │   ├── notebooks/          # colab notebook - TEAM11.ipynb
+│   │     │   ├── saved_models/       # model.keras
+│   │     │   └── training/
+│   │     ├── README.md
+│   │     └── requirements.txt
+│   ├── src/
+│   │     ├─ db/
+│   │     └── __init__.py
+│   ├── __init__.py
+│   ├── main.py
+│   ├── README.md
+│   └── requirement.txt
 │
 ├── .gitignore
-├── README.md
-└── package.json / pyproject.toml
+└── README.md
 ```
