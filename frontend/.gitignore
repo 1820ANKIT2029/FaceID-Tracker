@@ -7,12 +7,10 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-*node_modules
+node_modules
 dist
 dist-ssr
 *.local
-
-.env
 
 # Editor directories and files
 .vscode/*
@@ -24,14 +22,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-#python
-*__pycache__
-
-*.venv
-*venv
-
-backend/ai_models/src/data
-backend/ai_models/src/saved_models
-
-backend/src/db/uploaded_files
