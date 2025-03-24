@@ -2,7 +2,7 @@ from tensorflow.keras.models import load_model
 from tensorflow.random import normal
 from tensorflow.keras.losses import BinaryCrossentropy
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.metrics import BinaryAccuracy, Precision
+from tensorflow.keras.metrics import BinaryAccuracy, FalseNegatives, FalsePositives, TruePositives, TrueNegatives, Precision, Recall, AUC
 from tensorflow.keras.callbacks import ReduceLROnPlateau, LearningRateScheduler
 
 
@@ -40,7 +40,11 @@ def training(generator, saved_model_path=None):
         model((dummy_input, dummy_input))  # triggers model build
 
         loss_function = BinaryCrossentropy()
-        metrics = [BinaryAccuracy(name="accuracy"), Precision(name="precision")]
+        metrics = [
+            TruePositives(name='tp'), FalsePositives(name='fp'), TrueNegatives(name='tn'), 
+            FalseNegatives(name='fn'), BinaryAccuracy(name='accuracy'),
+            Precision(name='precision'), Recall(name='recall'), AUC(name='auc')
+        ]
 
         model.compile(
             optimizer = Adam(learning_rate = config["LEARNING_RATE"]),

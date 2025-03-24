@@ -1,4 +1,5 @@
 import os
+import math, gc
 import shutil
 import requests
 import zipfile
@@ -317,6 +318,69 @@ def load_data_generator2():
                 Data = positive.concatenate(negative)
 
         yield load_data(Data)
+
+def load_data_generator3():
+    n = 16
+    gen_no = config["DigiFace_gen_no"]
+    random.shuffle(config["combination_data_folder"])
+    P_list = config["combination_data_folder"][:gen_no]
+
+    for p1, p2 in P_list:
+        print(p1, p2)
+        p1_path = os.path.join(config["data_folder"], p1)
+        p2_path = os.path.join(config["data_folder"], p2)
+
+        dataset_p1 = [None] * n
+        dataset_p2 = [None] * n
+
+
+        try:
+            p1_path_child = os.listdir(p1_path)
+            p2_path_child = os.listdir(p2_path)
+
+            total_items = len(p1_path_child)
+            chunk_size = math.ceil(total_items / n)
+
+            for i in range(n):
+                start = i * chunk_size
+                end = min(start + chunk_size, total_items)
+                dataset_p1[i] = p1_path_child[start:end]
+                dataset_p2[i] = p2_path_child[start:end]
+
+            p1_path_child = None
+            p2_path_child = None
+        except OSError as e:
+            print(f"An error occurred: {e}")
+
+        for d1, d2 in zip(dataset_p1, dataset_p2):
+            Data = None
+            gc.collect()
+
+            print("Data generating.....")
+            for f1, f2 in zip(d1, d2):
+                f1_path = os.path.join(p1_path, f1, "")
+                f2_path = os.path.join(p2_path, f2, "")
+
+                f1_img = tf.data.Dataset.list_files(f1_path + '*.png').shuffle(buffer_size=1000)
+                f2_img = tf.data.Dataset.list_files(f2_path + '*.png').shuffle(buffer_size=1000)
+
+                f1_size = f1_img.cardinality().numpy()
+                f2_size = f2_img.cardinality().numpy()
+
+                negative = tf.data.Dataset.zip((f1_img, f2_img, tf.data.Dataset.from_tensor_slices(tf.zeros(f1_size))))
+                positive1 = tf.data.Dataset.zip((f1_img.take(f1_size//2), f1_img.skip(f1_size//2).take(f1_size//2), tf.data.Dataset.from_tensor_slices(tf.ones(f1_size//2))))
+                positive2 = tf.data.Dataset.zip((f2_img.take(f2_size//2), f2_img.skip(f2_size//2).take(f2_size//2), tf.data.Dataset.from_tensor_slices(tf.ones(f2_size//2))))
+                positive = positive1.concatenate(positive2)
+
+                if Data is None:
+                    Data = positive.concatenate(negative)
+                else:
+                    positive = positive.concatenate(negative)
+                    Data = Data.concatenate(negative)
+
+            print("Data generated, data Loading.....")
+
+            yield load_data(Data)
 
 # download zip and extract files from given url
 # target_dir = config["data_folder"]
