@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras import Model
-from tensorflow.keras.layers import Layer, Conv2D, MaxPooling2D, Flatten, Dense, BatchNormalization
+from tensorflow.keras.layers import Layer, Conv2D, MaxPooling2D, Flatten, Dense, BatchNormalization, ReLU, Dropout
 from tensorflow.keras.saving import register_keras_serializable
 from tensorflow.keras.regularizers import L2
 from tensorflow.keras.initializers import RandomNormal
@@ -11,82 +11,107 @@ from ..config import config
 
 IM_SIZE = config["IM_SIZE"]
 REGULARIZATION_RATE = config["REGULARIZATION_RATE"]
+DROPOUT_RATE_CONV = config["DROPOUT_RATE_CONV"]
+DROPOUT_RATE_DENSE = config["DROPOUT_RATE_DENSE"]
 
 class EmbeddingModel(Model):
     def __init__(self, **kwargs):
         super(EmbeddingModel, self).__init__(name='embedding', **kwargs)
 
-        # First block
         self.conv1 = Conv2D(
             filters=64,
             kernel_size=(10, 10),
-            activation='relu',
+            activation=None,
             kernel_initializer=RandomNormal(mean=0.0, stddev=1e-2),
             bias_initializer=RandomNormal(mean=0.5, stddev=1e-2),
             kernel_regularizer=L2(REGULARIZATION_RATE)
         )
-        BatchNormalization()
-        self.pool1 = MaxPooling2D((2, 2), strides=2, padding='valid')
+        self.bn1 = BatchNormalization()
+        self.act1 = ReLU()
+        self.pool1 = MaxPooling2D((2, 2), strides=2, padding='same')
+        self.drop1 = Dropout(DROPOUT_RATE_CONV)
 
-        # Second block
         self.conv2 = Conv2D(
             filters=128,
             kernel_size=(7, 7),
-            activation='relu',
+            activation=None,
             kernel_initializer=RandomNormal(mean=0.0, stddev=1e-2),
             bias_initializer=RandomNormal(mean=0.5, stddev=1e-2),
             kernel_regularizer=L2(REGULARIZATION_RATE)
         )
-        BatchNormalization()
-        self.pool2 = MaxPooling2D((2, 2), strides=2, padding='valid')
+        self.bn2 = BatchNormalization()
+        self.act2 = ReLU()
+        self.pool2 = MaxPooling2D((2, 2), strides=2, padding='same')
+        self.drop2 = Dropout(DROPOUT_RATE_CONV)
 
-        # Third block
         self.conv3 = Conv2D(
             filters=128,
             kernel_size=(4, 4),
-            activation='relu',
+            activation=None,
             kernel_initializer=RandomNormal(mean=0.0, stddev=1e-2),
             bias_initializer=RandomNormal(mean=0.5, stddev=1e-2),
             kernel_regularizer=L2(REGULARIZATION_RATE)
         )
-        BatchNormalization()
-        self.pool3 = MaxPooling2D((2, 2), strides=2, padding='valid')
+        self.bn3 = BatchNormalization()
+        self.act3 = ReLU()
+        self.pool3 = MaxPooling2D((2, 2), strides=2, padding='same')
+        self.drop3 = Dropout(DROPOUT_RATE_CONV)
 
-        # Final embedding block
         self.conv4 = Conv2D(
             filters=256,
             kernel_size=(4, 4),
-            activation='relu',
+            activation=None,
             kernel_initializer=RandomNormal(mean=0.0, stddev=1e-2),
             bias_initializer=RandomNormal(mean=0.5, stddev=1e-2),
             kernel_regularizer=L2(REGULARIZATION_RATE)
         )
-        BatchNormalization()
+        self.bn4 = BatchNormalization()
+        self.act4 = ReLU()
         self.flatten = Flatten()
+        self.drop4 = Dropout(DROPOUT_RATE_CONV)
+
         self.dense = Dense(
             4096,
-            activation='sigmoid',
+            activation=None,
             kernel_initializer=RandomNormal(mean=0.0, stddev=2e-1),
             bias_initializer=RandomNormal(mean=0.5, stddev=1e-2),
             kernel_regularizer=L2(REGULARIZATION_RATE)
         )
+        self.bn_dense = BatchNormalization()
+        self.act_dense = ReLU()
+        self.drop5 = Dropout(DROPOUT_RATE_DENSE)
 
     def call(self, inputs):
         x = self.conv1(inputs)
+        x = self.bn1(x)
+        x = self.act1(x)
         x = self.pool1(x)
+        x = self.drop1(x)
 
         x = self.conv2(x)
+        x = self.bn2(x)
+        x = self.act2(x)
         x = self.pool2(x)
+        x = self.drop2(x)
 
         x = self.conv3(x)
+        x = self.bn3(x)
+        x = self.act3(x)
         x = self.pool3(x)
+        x = self.drop3(x)
 
         x = self.conv4(x)
+        x = self.bn4(x)
+        x = self.act4(x)
         x = self.flatten(x)
+        x = self.drop4(x)
+
         x = self.dense(x)
+        x = self.bn_dense(x)
+        x = self.act_dense(x)
+        x = self.drop5(x)
 
         return x
-
 
 # Siamese L1 Distance class
 class L1Dist(Layer):
@@ -112,12 +137,11 @@ class SiameseModel(Model):
             bias_initializer=RandomNormal(mean=0.5, stddev=1e-2),
             kernel_regularizer=L2(REGULARIZATION_RATE)
         )
+        self.drop_classifier = Dropout(DROPOUT_RATE_DENSE)
 
     def call(self, inputs):
         input_image, validation_image = inputs[0], inputs[1]
 
-        # input_a = Input(shape=(IM_SIZE, IM_SIZE, 3))
-        # input_b = Input(shape=(IM_SIZE, IM_SIZE, 3))
         # Get embeddings
         input_embedding = self.embedding(input_image)
         validation_embedding = self.embedding(validation_image)
@@ -127,6 +151,7 @@ class SiameseModel(Model):
 
         # Classification
         output = self.classifier(distance)
+        output = self.drop_classifier(output)
 
         return output
 

@@ -7,6 +7,7 @@ import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import tensorflow as tf
+from tensorflow.keras import backend as K
 
 from .config import config
 
@@ -195,21 +196,14 @@ def load_data_raw():
 
 # Generator need to use for LFW, VGGFaces dataset
 def load_data_generator():
-    """
-    Data = [
-        (filename1, filename2, 1 or 0),
-        (filename1, filename2, 1 or 0),
-        ...
-    ]
-    """
+    n = 16
+
     POS_PATH = config["POS_PATH"]
     NEG_PATH = config["NEG_PATH"]
     ANC_PATH = config["ANC_PATH"]
 
     POS_PATH_child_dir = None
     ANC_PATH_child_dir = None
-
-    Data = None             # main data that will return
 
     try:
         POS_PATH_child_dir = os.listdir(POS_PATH)
@@ -225,50 +219,55 @@ def load_data_generator():
 
     # negative raw data
     NEG_PATH_P = os.path.join(NEG_PATH, "")
-    negative = tf.data.Dataset.list_files(NEG_PATH_P + '*.jpg')
-    negative_size = negative.cardinality().numpy()
+    # negative = tf.data.Dataset.list_files(NEG_PATH_P + '*.jpg')
+    # negative_size = negative.cardinality().numpy()
 
     archor_positive = []
 
     for p in POS_PATH_child_dir:
-        try:
-            POS_PATH_P = os.path.join(POS_PATH, p, "")
-            ANC_PATH_P = os.path.join(ANC_PATH, p, "")
+        POS_PATH_P = os.path.join(POS_PATH, p, "")
+        ANC_PATH_P = os.path.join(ANC_PATH, p, "")
 
-            anchor = tf.data.Dataset.list_files(ANC_PATH_P + '*.jpg')
-            positive = tf.data.Dataset.list_files(POS_PATH_P + '*.jpg')
+        anchor = tf.data.Dataset.list_files(ANC_PATH_P + '*.jpg')
+        positive = tf.data.Dataset.list_files(POS_PATH_P + '*.jpg')
 
-            archor_positive.append((anchor, positive))
-        except Exception as e:
-            print(f"Error processing class {p}: {e}")
-            continue
+        archor_positive.append((anchor, positive))
 
-    for _ in range(config["GENERATOR_ITER"]):
+    POS_PATH_child_dir = None
+    ANC_PATH_child_dir = None
+
+    l = math.ceil(len(archor_positive) / n)
+
+    dataset = [None] * n
+
+    for i in range(n):
+        start = i * l
+        end = min(start + l, len(archor_positive))
+        dataset[i] = archor_positive[start:end]
+
+    for d in dataset:
         Data = None
+        gc.collect()
+        
+        K.clear_session()
 
-        for anchor, positive in archor_positive:
-            try:
-                anchor = anchor.shuffle(buffer_size=10000)
-                positive = positive.shuffle(buffer_size=10000)
+        for anchor, positive in d:
+            anchor = anchor.shuffle(buffer_size=100)
+            positive = positive.shuffle(buffer_size=100)
+            negative = tf.data.Dataset.list_files(NEG_PATH_P + '*.jpg')
 
-                anchor_size = anchor.cardinality().numpy()
-                positive_size = positive.cardinality().numpy()
+            anchor_size = anchor.cardinality().numpy()
+            positive_size = positive.cardinality().numpy()
 
-                shuffled_negative = negative.shuffle(buffer_size=10000).take(anchor_size)
+            shuffled_negative = negative.shuffle(buffer_size=2048).take(anchor_size)
 
-                positives = tf.data.Dataset.zip((anchor, positive, tf.data.Dataset.from_tensor_slices(tf.ones(anchor_size))))
-                shuffled_negative = tf.data.Dataset.zip((anchor, shuffled_negative, tf.data.Dataset.from_tensor_slices(tf.zeros(anchor_size))))
+            positives = tf.data.Dataset.zip((anchor, positive, tf.data.Dataset.from_tensor_slices(tf.ones(anchor_size))))
+            shuffled_negative = tf.data.Dataset.zip((anchor, shuffled_negative, tf.data.Dataset.from_tensor_slices(tf.zeros(anchor_size))))
 
-                if Data is None:
-                    Data = positives.concatenate(shuffled_negative)
-                else:
-                    positives = positives.concatenate(shuffled_negative)
-                    Data = positives.concatenate(shuffled_negative)
-            except GeneratorExit:
-                return
-            except Exception as e:
-                print(f"Error processing class {p}: {e}")
-                continue
+            if Data is None:
+                Data = positives.concatenate(shuffled_negative)
+            else:
+                Data = Data.concatenate(positives.concatenate(shuffled_negative))
 
         yield load_data(Data)
 
