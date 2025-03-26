@@ -157,35 +157,44 @@ const App = () => {
     return results;
   };
 
-  return (
-    <>
-    <div className=''>
-        <div className='flex justify-center mb-4 p-4'>
-            <div className="text-4xl">
-              FaceID Tracker
-            </div>
-        </div>
-        <div className="app-container flex flex-col items-center w-full bg-gray-800 min-h-screen p-6">
+return (
+  <>
+    <div className="min-h-screen w-full bg-gray-800 text-white">
+      {/* Header */}
+      <div className="flex justify-center p-4 border-b border-gray-600">
+        <h1 className="text-4xl font-bold">FaceID Tracker</h1>
+      </div>
+
+      {/* Main Layout */}
+      <div className="flex h-[calc(100vh-80px)] w-full">
+        {/* Left - Video */}
+        <div className="w-2/3 p-4 border-r border-gray-600 flex items-center justify-center">
           <div
-            className="video-container relative border-4 border-gray-500 rounded-lg shadow-lg"
+            className="relative border-4 border-gray-500 rounded-lg shadow-lg h-full w-full"
             ref={overlayContainerRef}
           >
             <video
               ref={videoRef}
-              width="720"
-              height="560"
               autoPlay
               muted
-              className="rounded-lg"
+              className="rounded-lg w-full h-full object-cover"
             />
           </div>
-          <div className="w-full max-w-3xl mt-6">
-            <Table data={data} />
-          </div>
+        </div>
+
+        {/* Right - Table */}
+        <div className="w-1/3 p-4 overflow-y-auto">
+          <h2 className="text-2xl mb-4">Detected Faces</h2>
+          <Table data={data} />
         </div>
       </div>
-    </>
-  );
+    </div>
+  </>
+);
+
+  
+  
+  
 };
 
 export default App;
