@@ -21,11 +21,14 @@ app.add_middleware(
 model_manager = ModelManager(model_path=config["Prediction_Model"], global_search=False)
 
 def read_image_as_numpy(file: UploadFile) -> np.ndarray:
-    """Convert an uploaded image file to a NumPy array."""
     contents = file.file.read()
     np_array = np.frombuffer(contents, np.uint8)
-    img = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
-    return img
+    img_bgr = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
+    if img_bgr is None:
+        raise ValueError("Failed to decode image")
+    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+    return img_rgb
+
 
 @app.post("/predict/")
 async def predict(files: List[UploadFile] = File(...)):
