@@ -1,10 +1,11 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from typing import List
 import cv2
 import numpy as np
 from ai_models.src.inference.Manager import ModelManager
 from ai_models.src.config import config
 from fastapi.middleware.cors import CORSMiddleware
+import os
 
 app = FastAPI()
 
@@ -39,6 +40,7 @@ async def predict(files: List[UploadFile] = File(...)):
     for file in files:
         try:
             file.file.seek(0)
+            save_path = os.path.join("ai_models/src/data/validation", f"test.jpg")
             img_array = read_image_as_numpy(file)
             prediction = model_manager.local_prediction(img_array)
             print(prediction)
@@ -55,3 +57,20 @@ async def predict(files: List[UploadFile] = File(...)):
             prediction_results.append({"error": str(e)})
     
     return {"prediction_result": prediction_results}
+
+@app.post("/register/")
+async def register_criminal(
+    file: UploadFile = File(...),
+    name: str = Form(...)
+):
+    try:
+        img_array = read_image_as_numpy(file)
+
+        save_path = os.path.join("ai_models/src/data/validation", f"{name}.jpg")
+        img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+        cv2.imwrite(save_path, img_bgr)
+
+        return {"message": f"Image saved as {name}.jpg in validation folder."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save image: {e}")
+

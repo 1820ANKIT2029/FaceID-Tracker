@@ -157,40 +157,45 @@ const App = () => {
     return results;
   };
 
-return (
-  <>
-    <div className="min-h-screen w-full bg-gray-800 text-white">
-      {/* Header */}
-      <div className="flex justify-center p-4 border-b border-gray-600">
-        <h1 className="text-4xl font-bold">FaceID Tracker</h1>
-      </div>
-
-      {/* Main Layout */}
-      <div className="flex h-[calc(100vh-80px)] w-full">
-        {/* Left - Video */}
-        <div className="w-2/3 p-4 border-r border-gray-600 flex items-center justify-center">
-          <div
-            className="relative border-4 border-gray-500 rounded-lg shadow-lg h-full w-full"
-            ref={overlayContainerRef}
-          >
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              className="rounded-lg w-full h-full object-cover"
-            />
+  return (
+    <>
+      <div className="min-h-screen w-full bg-gradient-to-br from-[#0a1e5e] to-[#071a3c] text-white">
+        {/* Header */}
+        <div className="flex justify-center p-6 border-b border-blue-600">
+          <h1 className="text-4xl font-extrabold text-cyan-400 drop-shadow-md">
+            FaceTrack<span className="text-white">.AI</span>
+          </h1>
+        </div>
+  
+        {/* Main Layout */}
+        <div className="flex h-[calc(100vh-100px)] w-full">
+          {/* Left - Video */}
+          <div className="w-2/3 p-6 border-r border-blue-800 flex items-center justify-center">
+            <div
+              className="relative border-4 border-cyan-500 rounded-2xl shadow-xl h-full w-full"
+              ref={overlayContainerRef}
+            >
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                className="rounded-2xl w-full h-full object-cover"
+              />
+            </div>
+          </div>
+  
+          {/* Right - Table */}
+          <div className="w-1/3 p-6 overflow-y-auto text-white">
+            <h2 className="text-2xl mb-4 font-semibold text-cyan-300 border-b border-cyan-500 pb-2">
+              Detection Results
+            </h2>
+            <Table data={data} />
           </div>
         </div>
-
-        {/* Right - Table */}
-        <div className="w-1/3 p-4 overflow-y-auto">
-          <h2 className="text-2xl mb-4">Detected Faces</h2>
-          <Table data={data} />
-        </div>
       </div>
-    </div>
-  </>
-);
+    </>
+  );
+  
 
   
   
