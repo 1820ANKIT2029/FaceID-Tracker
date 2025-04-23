@@ -25,7 +25,7 @@ function Table({ data }) {
                 className="hover:bg-cyan-500/10 transition duration-200 border-t border-cyan-800"
               >
                 <td className="py-2 px-6 font-medium">{item.name}</td>
-                <td className="py-2 px-6">{item.confidence.toFixed(2)}%</td>
+                <td className="py-2 px-6">{item?.confidence?.toFixed(2)}%</td>
               </tr>
             ))
           )}
