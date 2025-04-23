@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import * as faceapi from 'face-api.js';
 import '../App.css';
 import Table from './Table';
+import { toast } from 'react-hot-toast'
 
 const App = () => {
   const videoRef = useRef(null);
@@ -78,7 +79,7 @@ const App = () => {
 
             setData((prev) => {
               const exists = prev.some((entry) => entry.name === pred.name);
-              return exists ? prev : [{ name: pred.name, time: time }, ...prev];
+              return exists ? prev : [{ name: pred.name, probability: (Math.floor(pred.probability * 100)) }, ...prev];
             });
 
             if (pred.name === "unknown") {
@@ -145,11 +146,13 @@ const App = () => {
           body: formData
         });
 
-        if (!response.ok) throw new Error(`Error: ${response.status}`);
+        // if (!response.ok) throw new Error(`Error: ${response.status}`);
         const data = await response.json();
+        // console.log(data.prediction_result[0])
         results.push(data.prediction_result[0]);
       } catch (error) {
         console.error('Error in face prediction:', error);
+        toast.error("Error in face prediction");
         results.push({ name: 'Unknown', probability: 0 });
       }
     }

@@ -160,7 +160,7 @@ class SiameseModel(Model):
 
         for name, img in img_name_list:
             img = tf.expand_dims(img, axis=0)
-            embedding_vec = self.embedding(img)
+            embedding_vec = self.embedding.predict(img)
 
             output.append((name, embedding_vec))
 
