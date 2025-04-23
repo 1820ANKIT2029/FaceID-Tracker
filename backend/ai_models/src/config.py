@@ -28,17 +28,17 @@ config = {
     "combination_data_folder": [(P_comb[i], P_comb[j]) for i in range(len(P_comb)) for j in range(i+1, len(P_comb))],
 
     "IM_SIZE": 100,
-    "REGULARIZATION_RATE": 0.001,
+    "REGULARIZATION_RATE": 0.01,
     "DROPOUT_RATE_CONV": 0.3,
     "DROPOUT_RATE_DENSE": 0.5,
     "LEARNING_RATE": 0.0001,
-    "EPOCHS": 3,
-    "BATCH_SIZE": 128,
+    "EPOCHS": 5,
+    "BATCH_SIZE": 32,
     "TRAINING_RATIO": 0.8,
     "VALIDATION_RATIO": 0.1,
     "TESTING_RATIO": 0.1,
     "GENERATOR_ITER": 1,
-    "DigiFace_gen_no": 5
+    "DigiFace_gen_no": 1
 }
 
 random.shuffle(config["combination_data_folder"])

@@ -18,22 +18,23 @@ def test5():
         break
 
 def test4():
-    from .interence.Manager import ModelManager
+    from .inference.Manager import ModelManager
     from .img_capture import get_video_frame
     # import numpy as np
     # np.set_printoptions(threshold=np.inf)
 
-    path = os.path.join(config["save_model_folder"], "model-20250312-213558.keras")
+    path = os.path.join(config["save_model_folder"], "model.keras")
     m = ModelManager(path)
     # m = ModelManager(path, global_search=True)
 
-    frame = get_video_frame()
+    while(1):
+        frame = get_video_frame()
 
-    print(frame)
+        pre = m.local_prediction(frame)
 
-    pre = m.local_prediction(frame)
-
-    print(pre)
+        print(pre)
+    
+    
 
 
 def test3():
@@ -44,9 +45,10 @@ def test3():
 
 def test2():
     import tensorflow as tf
+    from .training.model import custom_objects
 
-    path = os.path.join(config["save_model_folder"], "model-20250311-142854.keras")
-    model = tf.keras.models.load_model(path)
+    path = os.path.join(config["save_model_folder"], "model.keras")
+    model = tf.keras.models.load_model(path, custom_objects=custom_objects)
 
     model.summary()
 
