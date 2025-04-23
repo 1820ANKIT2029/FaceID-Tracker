@@ -137,7 +137,6 @@ class SiameseModel(Model):
             bias_initializer=RandomNormal(mean=0.5, stddev=1e-2),
             kernel_regularizer=L2(REGULARIZATION_RATE)
         )
-        self.drop_classifier = Dropout(DROPOUT_RATE_DENSE)
 
     def call(self, inputs):
         input_image, validation_image = inputs[0], inputs[1]
@@ -151,7 +150,6 @@ class SiameseModel(Model):
 
         # Classification
         output = self.classifier(distance)
-        output = self.drop_classifier(output)
 
         return output
 
@@ -162,27 +160,36 @@ class SiameseModel(Model):
 
         for name, img in img_name_list:
             img = tf.expand_dims(img, axis=0)
-            embedding_vec = self.embedding(img)
+            embedding_vec = self.embedding.predict(img)
 
             output.append((name, embedding_vec))
 
         return output
 
-    def custom_prediction(self, input_img, val_img_embedding):
-        input_img = tf.expand_dims(input_img, axis=0)
-        person = self.embedding(input_img)
-
-        pq = []
+    def custom_prediction(self, input_img, val_img_embedding, verbose=False):
         """
         val_img_embedding = [
-            ("Ankit kumar", [33, 4, 4, 534 ...]),
-            ("Anup kumar", [33, 4, 4, 534 ...]),
-            ("Ankit kumar", [33, 4, 4, 534 ...]),
+            ("Ankit kumar", [[33, 4, 4, 534 ...]]),
+            ("Anup kumar", [[33, 4, 4, 534 ...]]),
+            ("Ankit kumar", [[33, 4, 4, 534 ...]]),
         ]
         """
+
+        input_img = tf.expand_dims(input_img, axis=0)  # reshape (100, 100, 3) -> (1, 100, 100, 3)
+        person = self.embedding.predict(input_img)
+
+        if verbose:
+            print("Person Embedding vector: ", person)
+
+        pq = []
+
         for name, val_emb in val_img_embedding:
             dist = self.l1_distance(person, val_emb)
             output = self.classifier(dist)
+
+            if verbose:
+                print("L1 dist vector: ", dist)
+                print("Classifier Output: ", output)
 
             output =  output.numpy().item()
 

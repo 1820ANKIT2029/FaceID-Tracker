@@ -1,6 +1,7 @@
 import React from "react";
 
 function Table({ data }) {
+  console.log(data)
   return (
     <div className="overflow-x-auto mt-6 bg-white/5 backdrop-blur-md border border-cyan-500 rounded-xl p-4 shadow-md">
       <h3 className="text-xl font-semibold mb-4 text-cyan-300">Detection Results</h3>
