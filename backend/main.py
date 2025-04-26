@@ -42,6 +42,7 @@ async def predict(files: List[UploadFile] = File(...)):
             file.file.seek(0)
             save_path = os.path.join("ai_models/src/data/validation", f"test.jpg")
             img_array = read_image_as_numpy(file)
+            print(img_array)
             prediction = model_manager.local_prediction(img_array)
             print(prediction)
             person_name = prediction[0][1].split(".")[0]
