@@ -46,8 +46,8 @@ async def predict(files: List[UploadFile] = File(...)):
             print(prediction)
             person_name = prediction[0][1].split(".")[0]
             probability = prediction[0][0]
-            # if(prediction[0][0] < 0.4):
-            #     person_name = "unknown"
+            if( prediction[0][0] < 0.89 ):
+                person_name = "unknown"
 
             prediction_results.append({
                 "name": person_name,
